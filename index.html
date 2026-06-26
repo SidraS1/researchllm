@@ -1,0 +1,1959 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ReSearch AI - RAG Paper Understanding Dashboard</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- PDF.js for Client-Side PDF Parsing -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap');
+        
+        body {
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            background: #0b0f19;
+        }
+        .code-font {
+            font-family: 'JetBrains Mono', monospace;
+        }
+        /* Custom Glowing & Glassmorphic Utilities */
+        .glass-panel {
+            background: rgba(17, 24, 39, 0.7);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+        }
+        .glass-card-hover {
+            transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+        .glass-card-hover:hover {
+            border-color: rgba(99, 102, 241, 0.4);
+            box-shadow: 0 0 25px rgba(99, 102, 241, 0.2);
+            transform: translateY(-4px);
+        }
+        .text-glow {
+            text-shadow: 0 0 15px rgba(99, 102, 241, 0.6);
+        }
+        .glow-btn {
+            position: relative;
+            overflow: hidden;
+            transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+        .glow-btn::after {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: radial-gradient(circle, rgba(99,102,241,0.2) 0%, transparent 60%);
+            opacity: 0;
+            transition: opacity 0.3s ease;
+            pointer-events: none;
+        }
+        .glow-btn:hover::after {
+            opacity: 1;
+        }
+        /* Custom scrollbars */
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #0f172a;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #334155;
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #6366f1;
+        }
+        
+        @keyframes pulseGlow {
+            0%, 100% { opacity: 0.4; transform: scale(1); }
+            50% { opacity: 0.7; transform: scale(1.08); }
+        }
+        @keyframes float-slow-1 {
+            0%, 100% { transform: translate(0, 0) scale(1); }
+            33% { transform: translate(30px, -50px) scale(1.1); }
+            66% { transform: translate(-20px, 20px) scale(0.95); }
+        }
+        @keyframes float-slow-2 {
+            0%, 100% { transform: translate(0, 0) scale(1); }
+            50% { transform: translate(-40px, 40px) scale(1.15); }
+        }
+        @keyframes slideUpIn {
+            from { opacity: 0; transform: translateY(16px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes shimmmer-bg {
+            0% { background-position: -200% 0; }
+            100% { background-position: 200% 0; }
+        }
+        
+        .pulse-glow {
+            animation: pulseGlow 4s infinite ease-in-out;
+        }
+        .animate-float-1 {
+            animation: float-slow-1 15s infinite ease-in-out;
+        }
+        .animate-float-2 {
+            animation: float-slow-2 18s infinite ease-in-out;
+        }
+        .message-enter-anim {
+            animation: slideUpIn 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+        }
+        .tab-fade-in {
+            animation: slideUpIn 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+        }
+        .shimmer-loading {
+            background: linear-gradient(90deg, #0f172a 25%, #1e293b 50%, #0f172a 75%);
+            background-size: 200% 100%;
+            animation: shimmmer-bg 1.5s infinite linear;
+        }
+    </style>
+</head>
+<body class="text-slate-200 min-h-screen flex flex-col overflow-x-hidden">
+
+    <!-- Cinematic Splash Screen -->
+    <div id="splashScreen" class="fixed inset-0 z-[300] bg-[#070a13] flex flex-col items-center justify-center p-6 transition-all duration-1000 ease-in-out">
+        <!-- Interactive Network Canvas in background of splash -->
+        <canvas id="splashCanvas" class="absolute inset-0 w-full h-full pointer-events-none opacity-40"></canvas>
+        
+        <!-- Glowing gradient backdrops with float animations -->
+        <div class="absolute w-[600px] h-[600px] rounded-full bg-indigo-950/20 blur-[130px] animate-float-1 top-1/4 left-1/4"></div>
+        <div class="absolute w-[500px] h-[500px] rounded-full bg-emerald-950/20 blur-[140px] animate-float-2 bottom-1/4 right-1/4"></div>
+
+        <div class="glass-panel p-8 md:p-12 rounded-3xl max-w-xl w-full text-center relative z-10 shadow-2xl border border-indigo-500/20 transform transition-transform duration-700 hover:scale-[1.01]">
+            <div class="w-20 h-20 bg-gradient-to-tr from-indigo-600 to-violet-500 rounded-2xl flex items-center justify-center mx-auto mb-6 shadow-lg shadow-indigo-500/20 transform transition-transform duration-500 hover:rotate-12">
+                <i class="fa-solid fa-brain text-white text-4xl animate-pulse"></i>
+            </div>
+            
+            <h1 class="text-3xl md:text-4xl font-black bg-clip-text text-transparent bg-gradient-to-r from-white via-indigo-200 to-indigo-400 tracking-tight mb-2">
+                ReSearch AI
+            </h1>
+            <p class="text-xs uppercase tracking-widest text-indigo-400 font-bold mb-6">Cognitive RAG Workspace</p>
+
+            <!-- Greeting Text -->
+            <div class="h-12 flex items-center justify-center mb-8">
+                <p id="splashGreeting" class="text-lg md:text-xl font-medium text-slate-300"></p>
+            </div>
+
+            <p class="text-xs text-slate-400 leading-relaxed mb-8 max-w-sm mx-auto">
+                A high-fidelity semantic parsing dashboard driven by advanced vector embedding models and intelligent localized context retrieval mapping.
+            </p>
+
+            <button onclick="dismissSplash()" class="glow-btn w-full py-4 bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 text-white font-extrabold rounded-xl transition-all shadow-lg shadow-indigo-500/25 flex items-center justify-center gap-2 tracking-wide text-sm">
+                <span>INITIALIZE RAG DASHBOARD</span>
+                <i class="fa-solid fa-arrow-right"></i>
+            </button>
+        </div>
+    </div>
+
+    <!-- Top Navigation Header -->
+    <header class="bg-[#0b0f19]/80 backdrop-blur-md border-b border-slate-800 sticky top-0 z-50 px-6 py-4 flex flex-col md:flex-row justify-between items-center gap-4">
+        <div class="flex items-center gap-3">
+            <div class="bg-gradient-to-tr from-indigo-600 to-violet-500 text-white p-2.5 rounded-xl shadow-md shadow-indigo-500/20 flex items-center justify-center">
+                <i class="fa-solid fa-brain text-xl"></i>
+            </div>
+            <div>
+                <h1 class="font-extrabold text-xl tracking-tight text-white flex items-center gap-2">
+                    ReSearch AI <span class="bg-indigo-500/10 text-indigo-300 text-[10px] font-bold px-2.5 py-1 rounded-full uppercase border border-indigo-500/20">RAG ENGINE</span>
+                </h1>
+                <p class="text-[10px] text-slate-400 tracking-wide uppercase">Gemini-Powered Research Audit Center</p>
+            </div>
+        </div>
+        
+        <!-- API Setup and Key Status -->
+        <div class="flex flex-wrap items-center gap-3 w-full md:w-auto justify-end">
+            <div class="relative w-full md:w-64">
+                <span class="absolute inset-y-0 left-0 flex items-center pl-3 text-slate-400">
+                    <i class="fa-solid fa-key text-xs"></i>
+                </span>
+                <input type="password" id="apiKey" placeholder="Enter Gemini API Key..." 
+                       class="w-full pl-9 pr-8 py-2 text-sm bg-slate-900 border border-slate-800 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all text-slate-300 placeholder:text-slate-500" />
+                <button onclick="toggleKeyVisibility()" class="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-400 hover:text-indigo-400 transition-colors">
+                    <i id="keyVisibilityIcon" class="fa-solid fa-eye text-xs"></i>
+                </button>
+            </div>
+            <div id="apiStatusBadge" class="flex items-center gap-1.5 text-xs bg-amber-500/10 text-amber-300 border border-amber-500/20 px-3 py-2 rounded-lg font-medium">
+                <span class="w-2 h-2 rounded-full bg-amber-500 animate-pulse"></span>
+                Key Required
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content Grid -->
+    <main class="flex-1 flex flex-col lg:flex-row min-h-0 bg-[#070a13]">
+        
+        <!-- Left Sidebar Options -->
+        <section class="w-full lg:w-96 border-r border-slate-800 bg-[#0b0f19] p-6 flex flex-col gap-6 overflow-y-auto shrink-0 relative z-10">
+            <!-- Paper Upload & PDF Extraction -->
+            <div class="relative group">
+                <h3 class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-3 flex items-center gap-2">
+                    <i class="fa-solid fa-file-pdf text-indigo-400"></i> Upload Paper
+                </h3>
+                <div class="border-2 border-dashed border-slate-800 hover:border-indigo-500/50 rounded-2xl p-6 text-center cursor-pointer transition-all duration-300 relative bg-slate-900/50 hover:bg-slate-900/80 active:scale-[0.98] group" id="dropzone">
+                    <input type="file" id="pdfFileInput" accept="application/pdf" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer" />
+                    <div class="flex flex-col items-center gap-2 pointer-events-none">
+                        <div class="w-12 h-12 rounded-xl bg-indigo-500/10 text-indigo-400 flex items-center justify-center mb-2 group-hover:scale-110 transition-transform">
+                            <i class="fa-solid fa-cloud-arrow-up text-xl"></i>
+                        </div>
+                        <span class="text-sm font-semibold text-slate-300" id="uploadStatusText">Select or Drag PDF</span>
+                        <span class="text-xs text-slate-500">Standard Academic Papers / PDFs</span>
+                    </div>
+                </div>
+                
+                <!-- Sample Injector -->
+                <div class="mt-3 flex justify-between items-center bg-indigo-500/5 p-3 rounded-xl border border-indigo-500/10">
+                    <span class="text-xs font-semibold text-indigo-300 flex items-center gap-1.5">
+                        <i class="fa-solid fa-sparkles text-indigo-400"></i> No API key or PDF?
+                    </span>
+                    <button onclick="loadDemoDocument()" class="text-xs bg-indigo-600 hover:bg-indigo-500 text-white font-semibold px-3 py-1.5 rounded-lg transition-colors shadow-lg shadow-indigo-500/10">
+                        Try Sample Paper
+                    </button>
+                </div>
+            </div>
+
+            <hr class="border-slate-800" />
+
+            <!-- Chunking Controls -->
+            <div>
+                <div class="flex justify-between items-center mb-3">
+                    <h3 class="text-xs font-bold text-slate-400 uppercase tracking-widest flex items-center gap-2">
+                        <i class="fa-solid fa-sliders text-indigo-400"></i> Index Hyperparameters
+                    </h3>
+                    <button onclick="rebuildIndex()" id="rebuildBtn" class="text-xs font-bold text-indigo-400 hover:text-indigo-300 disabled:opacity-40" disabled>
+                        Apply Changes
+                    </button>
+                </div>
+                <div class="space-y-4 bg-slate-900/40 p-4 rounded-2xl border border-slate-800">
+                    <div>
+                        <div class="flex justify-between text-xs mb-1">
+                            <span class="text-slate-400">Chunk Size (Chars)</span>
+                            <span id="chunkSizeVal" class="font-bold text-indigo-400 code-font">1200</span>
+                        </div>
+                        <input type="range" id="chunkSizeInput" min="500" max="3000" step="100" value="1200" oninput="updateSliderLabels()" class="w-full h-1 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-indigo-500" />
+                    </div>
+                    <div>
+                        <div class="flex justify-between text-xs mb-1">
+                            <span class="text-slate-400">Overlap Window (Chars)</span>
+                            <span id="overlapVal" class="font-bold text-indigo-400 code-font">250</span>
+                        </div>
+                        <input type="range" id="overlapInput" min="50" max="800" step="25" value="250" oninput="updateSliderLabels()" class="w-full h-1 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-indigo-500" />
+                    </div>
+                    <div>
+                        <div class="flex justify-between text-xs mb-1">
+                            <span class="text-slate-400">Retrieval Top K</span>
+                            <span id="topKVal" class="font-bold text-indigo-400 code-font">4</span>
+                        </div>
+                        <input type="range" id="topKInput" min="2" max="10" step="1" value="4" oninput="updateSliderLabels()" class="w-full h-1 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-indigo-500" />
+                    </div>
+                </div>
+            </div>
+
+            <hr class="border-slate-800" />
+
+            <!-- Document Stats Dashboard -->
+            <div class="flex-1 flex flex-col justify-between">
+                <div>
+                    <h3 class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-3 flex items-center gap-2">
+                        <i class="fa-solid fa-chart-simple text-indigo-400"></i> Vector Stats
+                    </h3>
+                    <div class="grid grid-cols-2 gap-3" id="statsContainer">
+                        <div class="bg-slate-900/50 border border-slate-800/80 p-3 rounded-xl">
+                            <span class="text-[9px] text-slate-500 font-bold uppercase tracking-wider block">Doc Title</span>
+                            <span id="statTitle" class="text-xs font-bold text-slate-300 truncate block mt-0.5" title="-">-</span>
+                        </div>
+                        <div class="bg-slate-900/50 border border-slate-800/80 p-3 rounded-xl">
+                            <span class="text-[9px] text-slate-500 font-bold uppercase tracking-wider block">Total Pages</span>
+                            <span id="statPages" class="text-base font-extrabold text-white block mt-0.5">0</span>
+                        </div>
+                        <div class="bg-slate-900/50 border border-slate-800/80 p-3 rounded-xl">
+                            <span class="text-[9px] text-slate-500 font-bold uppercase tracking-wider block">RAM Chunks</span>
+                            <span id="statChunks" class="text-base font-extrabold text-white block mt-0.5">0</span>
+                        </div>
+                        <div class="bg-slate-900/50 border border-slate-800/80 p-3 rounded-xl">
+                            <span class="text-[9px] text-slate-500 font-bold uppercase tracking-wider block">Characters</span>
+                            <span id="statChars" class="text-base font-extrabold text-white block mt-0.5">0</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Active Document Preview Card -->
+                <div id="activeDocPreview" class="hidden mt-4 p-3 bg-emerald-500/10 text-emerald-300 border border-emerald-500/20 rounded-xl flex items-center gap-3 transition-all duration-500 animate-pulse">
+                    <i class="fa-solid fa-circle-check text-emerald-400 text-xl shrink-0"></i>
+                    <div class="min-w-0">
+                        <p class="text-xs font-bold truncate" id="activeDocName">paper.pdf</p>
+                        <p class="text-[10px] text-emerald-400/80">RAG Vector DB Ready & Indexed</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Right Work Area -->
+        <section class="flex-1 flex flex-col min-w-0 overflow-hidden relative z-10">
+            
+            <!-- Navigation Workspace Tabs -->
+            <div class="bg-[#0b0f19] border-b border-slate-800 px-6 flex gap-1 overflow-x-auto shrink-0 scrollbar-none">
+                <button onclick="switchTab('qa')" id="tabBtn-qa" class="tab-btn px-4 py-4 text-xs font-bold uppercase tracking-widest border-b-2 transition-all duration-300 flex items-center gap-2 border-indigo-500 text-indigo-400">
+                    <i class="fa-solid fa-comments"></i> Verified QA
+                </button>
+                <button onclick="switchTab('summary')" id="tabBtn-summary" class="tab-btn px-4 py-4 text-xs font-bold uppercase tracking-widest border-b-2 border-transparent text-slate-400 hover:text-slate-200 transition-all duration-300 flex items-center gap-2">
+                    <i class="fa-solid fa-layer-group"></i> Adaptive Summary
+                </button>
+                <button onclick="switchTab('gaps')" id="tabBtn-gaps" class="tab-btn px-4 py-4 text-xs font-bold uppercase tracking-widest border-b-2 border-transparent text-slate-400 hover:text-slate-200 transition-all duration-300 flex items-center gap-2">
+                    <i class="fa-solid fa-binoculars"></i> Research Gaps
+                </button>
+                <button onclick="switchTab('ablation')" id="tabBtn-ablation" class="tab-btn px-4 py-4 text-xs font-bold uppercase tracking-widest border-b-2 border-transparent text-slate-400 hover:text-slate-200 transition-all duration-300 flex items-center gap-2">
+                    <i class="fa-solid fa-yin-yang"></i> Ablation Arena
+                </button>
+                <button onclick="switchTab('eval')" id="tabBtn-eval" class="tab-btn px-4 py-4 text-xs font-bold uppercase tracking-widest border-b-2 border-transparent text-slate-400 hover:text-slate-200 transition-all duration-300 flex items-center gap-2">
+                    <i class="fa-solid fa-shield-halved"></i> G-Eval Auditor
+                </button>
+                <button onclick="switchTab('index')" id="tabBtn-index" class="tab-btn px-4 py-4 text-xs font-bold uppercase tracking-widest border-b-2 border-transparent text-slate-400 hover:text-slate-200 transition-all duration-300 flex items-center gap-2">
+                    <i class="fa-solid fa-database"></i> Vector Map
+                </button>
+            </div>
+
+            <!-- TAB CONTAINER -->
+            <div class="flex-1 p-6 overflow-y-auto min-h-0 flex flex-col gap-6">
+
+                <!-- TAB: Verified Q&A -->
+                <div id="tabContent-qa" class="tab-pane flex flex-col h-full gap-4 tab-fade-in">
+                    <div class="bg-slate-900/40 border border-slate-800 rounded-2xl p-4 flex-1 flex flex-col min-h-[350px]">
+                        <!-- Messages container -->
+                        <div id="chatHistory" class="flex-1 overflow-y-auto space-y-4 mb-4 pr-1 scroll-smooth">
+                            <div class="flex items-start gap-3 message-enter-anim">
+                                <div class="bg-indigo-500/10 text-indigo-400 w-8 h-8 rounded-lg flex items-center justify-center shrink-0">
+                                    <i class="fa-solid fa-robot text-sm"></i>
+                                </div>
+                                <div class="bg-slate-900 border border-slate-800 text-slate-300 p-4 rounded-r-2xl rounded-bl-2xl max-w-[85%] text-sm leading-relaxed shadow-sm">
+                                    <p class="font-bold text-[10px] text-indigo-400 uppercase tracking-wider mb-1">ReSearch AI Agent</p>
+                                    Welcome researcher. Configure your API key, index a document, and ask deep analytical questions. I will locate supporting text vectors and produce strictly grounded answers citing exact context indices.
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Suggestions chips library -->
+                        <div class="mb-4">
+                            <p class="text-[9px] font-bold text-slate-500 uppercase tracking-widest mb-2 flex items-center gap-1">
+                                <i class="fa-solid fa-lightbulb"></i> Prompt Suggestions
+                            </p>
+                            <div class="flex flex-wrap gap-2">
+                                <button onclick="injectPrompt('What is the main problem and objective of this research?')" class="text-xs bg-slate-900/80 border border-slate-850 hover:border-indigo-500/35 text-slate-400 hover:text-indigo-400 px-3 py-1.5 rounded-lg transition-all hover:scale-[1.02] active:scale-[0.98]">
+                                    Primary Objective
+                                </button>
+                                <button onclick="injectPrompt('What detailed validation or experimental setups are discussed?')" class="text-xs bg-slate-900/80 border border-slate-850 hover:border-indigo-500/35 text-slate-400 hover:text-indigo-400 px-3 py-1.5 rounded-lg transition-all hover:scale-[1.02] active:scale-[0.98]">
+                                    Validation & Setup
+                                </button>
+                                <button onclick="injectPrompt('Explain the step-by-step methodology and algorithms utilized.')" class="text-xs bg-slate-900/80 border border-slate-850 hover:border-indigo-500/35 text-slate-400 hover:text-indigo-400 px-3 py-1.5 rounded-lg transition-all hover:scale-[1.02] active:scale-[0.98]">
+                                    Methodology Steps
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Loading message -->
+                        <div id="typingIndicator" class="hidden flex items-center gap-2 text-slate-500 text-xs px-2 mb-4">
+                            <i class="fa-solid fa-circle-notch animate-spin text-indigo-400"></i>
+                            Conducting cosine similarity search & synthesizing grounded response with Gemini...
+                        </div>
+
+                        <!-- Inputs -->
+                        <div class="flex gap-3">
+                            <input type="text" id="queryInput" onkeydown="handleQueryKeypress(event)" placeholder="Pose a deep analytical query to the paper..." 
+                                   class="flex-1 px-4 py-3.5 bg-slate-900 border border-slate-800 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm text-slate-300 placeholder:text-slate-500 transition-all duration-300" />
+                            <button onclick="submitQuery()" class="bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 text-white font-bold px-6 py-3.5 rounded-xl transition-all shadow-lg shadow-indigo-500/10 flex items-center gap-2 text-sm shrink-0 active:scale-95">
+                                <span class="hidden sm:inline">Search & Execute</span> <i class="fa-solid fa-paper-plane"></i>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Visual Citation Shelf -->
+                    <div id="sourcesShelf" class="hidden transition-all duration-500">
+                        <h4 class="text-xs font-bold text-slate-500 uppercase tracking-widest mb-2 flex items-center gap-1.5">
+                            <i class="fa-solid fa-database text-indigo-400"></i> Grounding Source Nodes (Similarity Score)
+                        </h4>
+                        <div id="retrievedSourcesGrid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
+                            <!-- Injected dynamically -->
+                        </div>
+                    </div>
+                </div>
+
+                <!-- TAB: Multi-Level Summary -->
+                <div id="tabContent-summary" class="tab-pane hidden space-y-4 tab-fade-in">
+                    <div class="bg-slate-900/40 border border-slate-800 rounded-2xl p-6">
+                        <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
+                            <div>
+                                <h2 class="font-extrabold text-lg text-white">Adaptive Abstractive Summarization</h2>
+                                <p class="text-xs text-slate-400">Tailors explanation depth dynamically to fit your background needs.</p>
+                            </div>
+                            
+                            <!-- Depth options -->
+                            <div class="bg-slate-900 p-1.5 rounded-xl flex gap-1 border border-slate-800">
+                                <button onclick="selectSummaryDepth('Beginner')" id="depthBtn-Beginner" class="summary-depth-btn text-xs font-semibold px-4 py-2 rounded-lg transition-all duration-300 bg-indigo-600 text-white shadow-md active:scale-95">
+                                    Beginner
+                                </button>
+                                <button onclick="selectSummaryDepth('Student')" id="depthBtn-Student" class="summary-depth-btn text-xs font-semibold px-4 py-2 rounded-lg transition-all duration-300 text-slate-400 hover:text-white active:scale-95">
+                                    Student
+                                </button>
+                                <button onclick="selectSummaryDepth('Expert')" id="depthBtn-Expert" class="summary-depth-btn text-xs font-semibold px-4 py-2 rounded-lg transition-all duration-300 text-slate-400 hover:text-white active:scale-95">
+                                    Expert
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Guide Banner -->
+                        <div class="p-3 bg-indigo-500/5 border border-indigo-500/10 rounded-xl text-xs text-indigo-300 flex items-start gap-2.5 mb-6">
+                            <i class="fa-solid fa-circle-info mt-0.5 animate-bounce"></i>
+                            <span id="depthDescText">Explain the paper using clean, non-jargon intuitive terms. Replaces technical matrices with elegant structural analogies.</span>
+                        </div>
+
+                        <div class="flex justify-end mb-4">
+                            <button onclick="generateAdaptiveSummary()" class="bg-gradient-to-r from-indigo-600 to-violet-600 text-white font-bold px-4 py-2.5 rounded-lg text-xs tracking-wider uppercase transition-all shadow-lg shadow-indigo-500/10 flex items-center gap-2 active:scale-95">
+                                <i class="fa-solid fa-wand-magic-sparkles"></i> Generate Summary
+                            </button>
+                        </div>
+
+                        <!-- Summarization Display -->
+                        <div id="summaryOutput" class="prose max-w-none text-slate-300 text-sm min-h-[250px] border border-slate-800 rounded-xl p-5 bg-slate-900/20 leading-relaxed whitespace-pre-wrap transition-all duration-300">
+                            Launch summarization above to synthesize an abstractive overview tailored to your target comprehension persona.
+                        </div>
+                    </div>
+                </div>
+
+                <!-- TAB: Research Gaps -->
+                <div id="tabContent-gaps" class="tab-pane hidden space-y-4 tab-fade-in">
+                    <div class="bg-slate-900/40 border border-slate-800 rounded-2xl p-6">
+                        <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-4">
+                            <div>
+                                <h2 class="font-extrabold text-lg text-white">Research-Gap Discovery Panel</h2>
+                                <p class="text-xs text-slate-400">Scrapes localized vectors to map explicit trade-offs and suggest potential future directions.</p>
+                            </div>
+                            <button onclick="runResearchGapAnalysis()" class="bg-gradient-to-r from-indigo-600 to-violet-600 text-white font-bold px-4 py-2.5 rounded-lg text-xs tracking-wider uppercase transition-all shadow-lg shadow-indigo-500/10 flex items-center gap-2 shrink-0 active:scale-95">
+                                <i class="fa-solid fa-magnifying-glass-chart"></i> Analyze Limitations
+                            </button>
+                        </div>
+
+                        <!-- Display output -->
+                        <div id="gapsOutput" class="prose max-w-none text-slate-300 text-sm min-h-[250px] border border-slate-800 rounded-xl p-5 bg-slate-900/20 leading-relaxed whitespace-pre-wrap transition-all duration-300">
+                            Click "Analyze Limitations" to perform semantic vector mapping over negative benchmarks, trade-offs, and design omissions.
+                        </div>
+                    </div>
+                </div>
+
+                <!-- TAB: Ablation Arena -->
+                <div id="tabContent-ablation" class="tab-pane hidden space-y-4 tab-fade-in">
+                    <div class="bg-slate-900/40 border border-slate-800 rounded-2xl p-6">
+                        <div class="mb-4">
+                            <h2 class="font-extrabold text-lg text-white">Ablation Arena</h2>
+                            <p class="text-xs text-slate-400">Direct comparison: Observe base Gemini weights vs localized RAG-grounded retrieval vectors.</p>
+                        </div>
+
+                        <div class="flex gap-2 mb-6">
+                            <input type="text" id="ablationQueryInput" placeholder="Pose a specific query requiring raw context verification (e.g., hyperparameter values)..." 
+                                   class="flex-1 px-4 py-3 bg-slate-900 border border-slate-800 rounded-xl text-sm text-slate-300 focus:ring-2 focus:ring-indigo-500 focus:outline-none transition-all duration-300" />
+                            <button onclick="runAblationTest()" class="bg-slate-100 hover:bg-white text-slate-900 font-bold px-5 py-3 rounded-xl transition-all text-sm flex items-center gap-2 shrink-0 active:scale-95">
+                                <i class="fa-solid fa-bolt text-indigo-600 animate-pulse"></i> Run Comparison
+                            </button>
+                        </div>
+
+                        <!-- Side by Side split cards -->
+                        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                            <!-- Base Model -->
+                            <div class="border border-slate-800 bg-[#0b0f19] rounded-2xl overflow-hidden shadow-xl glass-card-hover">
+                                <div class="bg-slate-900/80 px-4 py-3 border-b border-slate-800 flex justify-between items-center">
+                                    <span class="text-xs font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
+                                        <span class="w-2 h-2 rounded-full bg-rose-500 animate-pulse"></span> Base Gemini Model
+                                    </span>
+                                    <span class="text-[9px] bg-rose-500/10 text-rose-300 border border-rose-500/20 font-bold px-2 py-0.5 rounded animate-pulse">High Hallucination Risk</span>
+                                </div>
+                                <div id="ablationBaseOutput" class="p-4 text-sm text-slate-400 min-h-[250px] whitespace-pre-wrap leading-relaxed">
+                                    Base model generates answers solely using public parameters without local reference support. Excellent for demonstrating hallucinations.
+                                </div>
+                            </div>
+
+                            <!-- RAG Model -->
+                            <div class="border border-indigo-500/20 bg-[#0b0f19] rounded-2xl overflow-hidden shadow-xl shadow-indigo-500/5 glass-card-hover">
+                                <div class="bg-indigo-50/50 px-4 py-3 border-b border-indigo-500/20 flex justify-between items-center">
+                                    <span class="text-xs font-bold text-indigo-300 uppercase tracking-wider flex items-center gap-1.5">
+                                        <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span> ReSearch AI Guided RAG
+                                    </span>
+                                    <span class="text-[9px] bg-emerald-500/10 text-emerald-300 border border-emerald-500/20 font-bold px-2 py-0.5 rounded">Grounded & Verified</span>
+                                </div>
+                                <div id="ablationRagOutput" class="p-4 text-sm text-slate-200 min-h-[250px] whitespace-pre-wrap leading-relaxed">
+                                    ReSearch AI extracts localized relevant context vectors before prompt execution to ground parameters and provide precise citations.
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- TAB: G-Eval Auditor -->
+                <div id="tabContent-eval" class="tab-pane hidden space-y-4 tab-fade-in">
+                    <div class="bg-slate-900/40 border border-slate-800 rounded-2xl p-6">
+                        <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-4">
+                            <div>
+                                <h2 class="font-extrabold text-lg text-white">G-Eval Factuality Auditor</h2>
+                                <p class="text-xs text-slate-400">Launches an evaluation pipeline comparing synthesized answers to raw retrieval vectors.</p>
+                            </div>
+                            <button onclick="runFactualityCheck()" class="bg-gradient-to-r from-indigo-600 to-violet-600 text-white font-bold px-4 py-2.5 rounded-lg text-xs tracking-wider uppercase transition-all shadow-lg shadow-indigo-500/10 flex items-center gap-2 shrink-0 active:scale-95">
+                                <i class="fa-solid fa-clipboard-check"></i> Evaluate Pipeline
+                            </button>
+                        </div>
+
+                        <!-- Target Query -->
+                        <div class="mb-4">
+                            <label class="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Evaluate Against Question</label>
+                            <input type="text" id="evalQueryInput" placeholder="Input specific prompt validation target (e.g. optimizer details)..." 
+                                   class="w-full px-4 py-3 bg-slate-900 border border-slate-800 rounded-xl text-sm text-slate-300 focus:ring-2 focus:ring-indigo-500 focus:outline-none transition-all duration-300" />
+                        </div>
+
+                        <!-- Metric scorecards -->
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                            <!-- Groundedness Gauge -->
+                            <div class="bg-slate-900 border border-slate-800 rounded-2xl p-4 text-center transform transition-transform duration-300 hover:scale-105">
+                                <span class="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Groundedness Index</span>
+                                <span id="evalScoreGrounded" class="text-3xl font-black text-slate-600 block my-1">N/A</span>
+                                <span class="text-[10px] text-slate-500 block">Are statements backed directly by context?</span>
+                            </div>
+                            <!-- Hallucination detector -->
+                            <div class="bg-slate-900 border border-slate-800 rounded-2xl p-4 text-center transform transition-transform duration-300 hover:scale-105">
+                                <span class="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Hallucination Detected</span>
+                                <span id="evalScoreHallucinated" class="text-3xl font-black text-slate-600 block my-1">N/A</span>
+                                <span class="text-[10px] text-slate-500 block">Did model introduce external speculation?</span>
+                            </div>
+                            <!-- Citation Score -->
+                            <div class="bg-slate-900 border border-slate-800 rounded-2xl p-4 text-center transform transition-transform duration-300 hover:scale-105">
+                                <span class="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Citation Validity</span>
+                                <span id="evalScoreCitations" class="text-3xl font-black text-slate-600 block my-1">N/A</span>
+                                <span class="text-[10px] text-slate-500 block">Are references correctly cited?</span>
+                            </div>
+                        </div>
+
+                        <!-- Report Output box -->
+                        <div class="border border-slate-800 rounded-2xl overflow-hidden bg-[#0b0f19]">
+                            <div class="bg-slate-900 px-4 py-3 border-b border-slate-800 text-xs font-bold text-slate-400 uppercase tracking-widest">
+                                Auditor Evaluation Report
+                            </div>
+                            <div id="evalReportOutput" class="p-4 text-sm text-slate-400 min-h-[150px] whitespace-pre-wrap leading-relaxed">
+                                Launch audit parameters. Gemini will evaluate context precision, outputting analytical justifications for grounded ratings.
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- TAB: Vector DB Map -->
+                <div id="tabContent-index" class="tab-pane hidden space-y-4 tab-fade-in">
+                    <div class="bg-slate-900/40 border border-slate-800 rounded-2xl p-6">
+                        <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
+                            <div>
+                                <h2 class="font-extrabold text-lg text-white">Interactive Vector Universe</h2>
+                                <p class="text-xs text-slate-400">Visual mapping of parsed chunks represented as stellar bodies in similarity grids.</p>
+                            </div>
+                            <div class="relative w-full sm:w-64">
+                                <span class="absolute inset-y-0 left-0 flex items-center pl-3 text-slate-500">
+                                    <i class="fa-solid fa-filter text-xs"></i>
+                                </span>
+                                <input type="text" id="inspectorSearch" oninput="filterVectorInspector()" placeholder="Filter nodes by context keywords..." 
+                                       class="w-full pl-9 pr-4 py-2 text-xs bg-slate-900 border border-slate-800 rounded-lg text-slate-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all duration-300" />
+                            </div>
+                        </div>
+
+                        <!-- Grid holding Canvas visualizer & Card grid -->
+                        <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+                            <!-- Canvas map -->
+                            <div class="lg:col-span-5 bg-slate-900 border border-slate-800 rounded-2xl p-4 flex flex-col items-center">
+                                <span class="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-3 self-start flex items-center gap-1.5">
+                                    <i class="fa-solid fa-solar-system text-indigo-400 animate-spin" style="animation-duration: 10s"></i> Local Distance Cluster Graph
+                                </span>
+                                <div class="w-full relative h-72 rounded-xl overflow-hidden bg-[#070a13] border border-slate-850">
+                                    <canvas id="vectorUniverseCanvas" class="w-full h-full cursor-crosshair"></canvas>
+                                </div>
+                                <span class="text-[9px] text-slate-500 mt-2 text-center">Interactive Orbit Galaxy: Click a spinning star node to inspect chunk vectors.</span>
+                            </div>
+
+                            <!-- List scroll -->
+                            <div class="lg:col-span-7 flex flex-col">
+                                <span class="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-3 flex items-center gap-1.5">
+                                    <i class="fa-solid fa-list-check text-indigo-400"></i> Vector Chunk Database Records
+                                </span>
+                                <div id="inspectorGrid" class="grid grid-cols-1 md:grid-cols-2 gap-4 max-h-[300px] overflow-y-auto pr-1">
+                                    <div class="col-span-full text-center py-12 text-slate-500 text-sm">
+                                        <i class="fa-solid fa-box-open text-4xl mb-2 block text-slate-600 animate-bounce"></i>
+                                        No chunks indexed. Upload a standard PDF or run the demonstration fallback database.
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </section>
+    </main>
+
+    <!-- Fullscreen Loader screen -->
+    <div id="globalLoader" class="fixed inset-0 bg-slate-950/80 backdrop-blur-md z-[100] hidden flex items-center justify-center">
+        <div class="glass-panel p-8 rounded-3xl max-w-sm w-full text-center mx-4 border border-indigo-500/10">
+            <div class="w-16 h-16 bg-indigo-500/10 text-indigo-400 rounded-2xl flex items-center justify-center mx-auto mb-4 border border-indigo-500/20">
+                <i class="fa-solid fa-spinner animate-spin text-3xl"></i>
+            </div>
+            <h4 class="font-extrabold text-white text-lg mb-1" id="loaderTitle">Executing Operation</h4>
+            <p class="text-xs text-slate-400 leading-relaxed" id="loaderDesc">Extracting document segments and loading contexts...</p>
+        </div>
+    </div>
+
+    <!-- Toast elements -->
+    <div id="toast" class="fixed bottom-6 right-6 z-[200] max-w-sm bg-slate-900 border border-slate-800 text-white rounded-2xl shadow-2xl px-4 py-3.5 hidden flex items-center gap-3 transition-all duration-300">
+        <span id="toastIcon" class="text-indigo-400 text-lg"><i class="fa-solid fa-circle-info"></i></span>
+        <div class="min-w-0">
+            <p class="text-xs font-bold text-white leading-snug" id="toastText">Default message placeholder</p>
+        </div>
+        <button onclick="hideToast()" class="text-slate-500 hover:text-white ml-auto"><i class="fa-solid fa-xmark text-xs"></i></button>
+    </div>
+
+    <!-- Core Application Javascript -->
+    <script>
+        // PDF.js worker setup
+        pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+
+        // App States
+        let documentChunks = []; 
+        let currentPdfFilename = "";
+        let currentPdfPages = 0;
+        let selectedSummaryDepth = "Beginner";
+        let activeTab = "qa";
+
+        // Splash screen particle effect variables
+        let splashCanvas, splashCtx, splashParticles = [];
+        
+        // Interactive universe graph stars (with rotation controls)
+        let universeCanvas, universeCtx, universeStars = [];
+        let activeSelectedStar = null;
+        let universeAnimFrameId = null;
+        let universeAngle = 0;
+
+        // Custom Dynamic Welcome Greeting script (Hi to users)
+        const GREETING_TEXTS = [
+            "Hi there, Researcher! 👋",
+            "Welcome to ReSearch AI! 🧠",
+            "Say goodbye to hallucinations! 🛡️",
+            "Let's trace your paper citations! 🔍",
+            "RAG Engine is warming up... ⚡"
+        ];
+        let greetingIndex = 0;
+        let charIndex = 0;
+        let isDeleting = false;
+
+        // Initialize Splash Screens on Load
+        window.addEventListener('DOMContentLoaded', () => {
+            initSplashParticles();
+            typeGreeting();
+            updateSliderLabels();
+            setupDragAndDrop();
+            checkApiKeyStatus();
+
+            document.getElementById('apiKey').addEventListener('input', checkApiKeyStatus);
+        });
+
+        // Greeting Typing Loop
+        function typeGreeting() {
+            const currentText = GREETING_TEXTS[greetingIndex];
+            const displayEl = document.getElementById('splashGreeting');
+            if (!displayEl) return;
+
+            if (isDeleting) {
+                displayEl.innerHTML = currentText.substring(0, charIndex - 1);
+                charIndex--;
+            } else {
+                displayEl.innerHTML = currentText.substring(0, charIndex + 1);
+                charIndex++;
+            }
+
+            let delay = 100;
+            if (!isDeleting && charIndex === currentText.length) {
+                delay = 1500; // Stay visible at end
+                isDeleting = true;
+            } else if (isDeleting && charIndex === 0) {
+                isDeleting = false;
+                greetingIndex = (greetingIndex + 1) % GREETING_TEXTS.length;
+                delay = 500; // Gap before typing next
+            }
+
+            setTimeout(typeGreeting, delay);
+        }
+
+        // Interactive Background particles for the splash screen
+        function initSplashParticles() {
+            splashCanvas = document.getElementById('splashCanvas');
+            if (!splashCanvas) return;
+            splashCtx = splashCanvas.getContext('2d');
+            
+            resizeSplashCanvas();
+            window.addEventListener('resize', resizeSplashCanvas);
+
+            // Generate particles representing unstructured knowledge chunks
+            for (let i = 0; i < 50; i++) {
+                splashParticles.push({
+                    x: Math.random() * splashCanvas.width,
+                    y: Math.random() * splashCanvas.height,
+                    vx: (Math.random() - 0.5) * 0.5,
+                    vy: (Math.random() - 0.5) * 0.5,
+                    size: Math.random() * 2 + 1,
+                    color: Math.random() > 0.5 ? '#6366f1' : '#10b981'
+                });
+            }
+
+            requestAnimationFrame(animateSplashParticles);
+        }
+
+        function resizeSplashCanvas() {
+            if (!splashCanvas) return;
+            splashCanvas.width = window.innerWidth;
+            splashCanvas.height = window.innerHeight;
+        }
+
+        function animateSplashParticles() {
+            if (!document.getElementById('splashScreen')) return;
+            splashCtx.clearRect(0, 0, splashCanvas.width, splashCanvas.height);
+
+            // Update & Draw particles
+            splashParticles.forEach((p, idx) => {
+                p.x += p.vx;
+                p.y += p.vy;
+
+                if (p.x < 0 || p.x > splashCanvas.width) p.vx *= -1;
+                if (p.y < 0 || p.y > splashCanvas.height) p.vy *= -1;
+
+                splashCtx.beginPath();
+                splashCtx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+                splashCtx.fillStyle = p.color;
+                splashCtx.fill();
+
+                // Connect particles in a cluster network
+                for (let j = idx + 1; j < splashParticles.length; j++) {
+                    const p2 = splashParticles[j];
+                    const dist = Math.hypot(p.x - p2.x, p.y - p2.y);
+                    if (dist < 120) {
+                        splashCtx.beginPath();
+                        splashCtx.moveTo(p.x, p.y);
+                        splashCtx.lineTo(p2.x, p2.y);
+                        splashCtx.strokeStyle = `rgba(99, 102, 241, ${1 - dist / 120})`;
+                        splashCtx.lineWidth = 0.3;
+                        splashCtx.stroke();
+                    }
+                }
+            });
+
+            requestAnimationFrame(animateSplashParticles);
+        }
+
+        function dismissSplash() {
+            const splash = document.getElementById('splashScreen');
+            splash.classList.add('scale-105', 'blur-xl', 'pointer-events-none');
+            splash.style.opacity = '0';
+            setTimeout(() => {
+                splash.remove();
+            }, 800);
+            showToast("Welcome Researcher! Dashboard initialized successfully.");
+        }
+
+        // Slider value labels
+        function updateSliderLabels() {
+            const size = document.getElementById('chunkSizeInput').value;
+            const overlap = document.getElementById('overlapInput').value;
+            const topK = document.getElementById('topKInput').value;
+
+            document.getElementById('chunkSizeVal').innerText = size;
+            document.getElementById('overlapVal').innerText = overlap;
+            document.getElementById('topKVal').innerText = topK;
+        }
+
+        function toggleKeyVisibility() {
+            const input = document.getElementById('apiKey');
+            const icon = document.getElementById('keyVisibilityIcon');
+            if (input.type === 'password') {
+                input.type = 'text';
+                icon.classList.replace('fa-eye', 'fa-eye-slash');
+            } else {
+                input.type = 'password';
+                icon.classList.replace('fa-eye-slash', 'fa-eye');
+            }
+        }
+
+        function checkApiKeyStatus() {
+            const key = document.getElementById('apiKey').value.trim();
+            const badge = document.getElementById('apiStatusBadge');
+            if (key) {
+                badge.className = "flex items-center gap-1.5 text-xs bg-emerald-500/10 text-emerald-300 border border-emerald-500/20 px-3 py-2 rounded-lg font-medium shadow-sm transition-all duration-300 hover:scale-105";
+                badge.innerHTML = `<span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span> Key Ready`;
+            } else {
+                badge.className = "flex items-center gap-1.5 text-xs bg-amber-500/10 text-amber-300 border border-amber-500/20 px-3 py-2 rounded-lg font-medium transition-all duration-300";
+                badge.innerHTML = `<span class="w-2 h-2 rounded-full bg-amber-500 animate-pulse"></span> Key Required`;
+            }
+        }
+
+        function showToast(message, isError = false) {
+            const toast = document.getElementById('toast');
+            const text = document.getElementById('toastText');
+            const icon = document.getElementById('toastIcon');
+
+            text.innerText = message;
+            if (isError) {
+                toast.className = "fixed bottom-6 right-6 z-[200] max-w-sm bg-rose-950/90 border border-rose-800 text-rose-50 rounded-2xl shadow-2xl px-4 py-3.5 flex items-center gap-3 backdrop-blur-md animate-bounce";
+                icon.innerHTML = `<i class="fa-solid fa-triangle-exclamation text-rose-400 text-lg"></i>`;
+            } else {
+                toast.className = "fixed bottom-6 right-6 z-[200] max-w-sm bg-slate-900/90 border border-slate-800 text-slate-100 rounded-2xl shadow-2xl px-4 py-3.5 flex items-center gap-3 backdrop-blur-md animate-slide-up";
+                icon.innerHTML = `<i class="fa-solid fa-circle-check text-emerald-400 text-lg"></i>`;
+            }
+            toast.classList.remove('hidden');
+
+            setTimeout(() => { hideToast(); }, 6000);
+        }
+
+        function hideToast() {
+            document.getElementById('toast').classList.add('hidden');
+        }
+
+        function showLoader(title, desc) {
+            document.getElementById('loaderTitle').innerText = title;
+            document.getElementById('loaderDesc').innerText = desc;
+            document.getElementById('globalLoader').classList.remove('hidden');
+        }
+
+        function hideLoader() {
+            document.getElementById('globalLoader').classList.add('hidden');
+        }
+
+        function switchTab(tabId) {
+            activeTab = tabId;
+            document.querySelectorAll('.tab-pane').forEach(el => el.classList.add('hidden'));
+            document.querySelectorAll('.tab-btn').forEach(btn => {
+                btn.className = "tab-btn px-4 py-4 text-xs font-bold uppercase tracking-widest border-b-2 border-transparent text-slate-400 hover:text-slate-200 transition-all flex items-center gap-2";
+            });
+
+            const activeBtn = document.getElementById(`tabBtn-${tabId}`);
+            activeBtn.className = "tab-btn px-4 py-4 text-xs font-bold uppercase tracking-widest border-b-2 transition-all flex items-center gap-2 border-indigo-500 text-indigo-400";
+            
+            document.getElementById(`tabContent-${tabId}`).classList.remove('hidden');
+
+            if (tabId === 'index') {
+                // Instantly resize and draw the visual Vector universe
+                setTimeout(initVectorUniverse, 100);
+            } else {
+                if (universeAnimFrameId) {
+                    cancelAnimationFrame(universeAnimFrameId);
+                    universeAnimFrameId = null;
+                }
+            }
+        }
+
+        function injectPrompt(text) {
+            const input = document.getElementById('queryInput');
+            input.value = text;
+            input.classList.add('ring-2', 'ring-indigo-500');
+            setTimeout(() => input.classList.remove('ring-2', 'ring-indigo-500'), 800);
+        }
+
+        // Drag & Drop
+        function setupDragAndDrop() {
+            const dropzone = document.getElementById('dropzone');
+            const fileInput = document.getElementById('pdfFileInput');
+
+            dropzone.addEventListener('dragover', (e) => {
+                e.preventDefault();
+                dropzone.classList.add('border-indigo-500', 'bg-slate-900/80', 'scale-[1.02]');
+            });
+
+            dropzone.addEventListener('dragleave', () => {
+                dropzone.classList.remove('border-indigo-500', 'bg-slate-900/80', 'scale-[1.02]');
+            });
+
+            dropzone.addEventListener('drop', (e) => {
+                e.preventDefault();
+                dropzone.classList.remove('border-indigo-500', 'bg-slate-900/80', 'scale-[1.02]');
+
+                const files = e.dataTransfer.files;
+                if (files.length > 0 && files[0].type === "application/pdf") {
+                    fileInput.files = files;
+                    handlePDFUpload(files[0]);
+                } else {
+                    showToast("Only valid PDF documents are supported.", true);
+                }
+            });
+
+            fileInput.addEventListener('change', (e) => {
+                if (e.target.files.length > 0) {
+                    handlePDFUpload(e.target.files[0]);
+                }
+            });
+        }
+
+        // Parse PDF pages using PDF.js
+        async function handlePDFUpload(file) {
+            showLoader("Reading PDF Contents", "Deploying async stream readers to extract pages...");
+            currentPdfFilename = file.name;
+
+            try {
+                const arrayBuffer = await file.arrayBuffer();
+                const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+                currentPdfPages = pdf.numPages;
+
+                let textByPage = [];
+                for (let i = 1; i <= pdf.numPages; i++) {
+                    const page = await pdf.getPage(i);
+                    const textContent = await page.getTextContent();
+                    const pageText = textContent.items.map(item => item.str).join(" ");
+                    if (pageText.trim()) {
+                        textByPage.push({ page: i, text: pageText });
+                    }
+                }
+
+                if (textByPage.length === 0) {
+                    throw new Error("Extracted PDF content returned blank text. OCR scanned pages require pre-processing.");
+                }
+
+                await buildVectorIndex(textByPage, file.name);
+                showToast("Document indexed inside browser memory.");
+            } catch (err) {
+                console.error(err);
+                showToast(err.message || "Failed parsing the uploaded PDF.", true);
+            } finally {
+                hideLoader();
+            }
+        }
+
+        async function loadDemoDocument() {
+            showLoader("Loading Sample Paper", "Injecting high-fidelity mock vector highlights into the index...");
+            setTimeout(async () => {
+                currentPdfFilename = SAMPLE_PAPER.title;
+                currentPdfPages = SAMPLE_PAPER.pages;
+                
+                await buildVectorIndex(SAMPLE_PAPER.rawPagesText, SAMPLE_PAPER.title);
+                showToast("Demo Paper successfully loaded.");
+                hideLoader();
+            }, 800);
+        }
+
+        // Segmenting Text Chunks with Overlap parameters
+        async function buildVectorIndex(textByPage, title) {
+            showLoader("Structuring Vectors", "Segmenting pages into uniform overlapping boundaries...");
+
+            const chunkSize = parseInt(document.getElementById('chunkSizeInput').value);
+            const overlap = parseInt(document.getElementById('overlapInput').value);
+
+            let chunks = [];
+            let chunkIdCount = 0;
+            let accumulatedText = "";
+            let currentPagesSet = new Set();
+
+            for (const { page, text } of textByPage) {
+                accumulatedText += `\n[Page ${page}]\n` + text;
+                currentPagesSet.add(page);
+
+                while (accumulatedText.length >= chunkSize) {
+                    const chunkContent = accumulatedText.substring(0, chunkSize);
+                    chunks.push({
+                        id: `CHUNK_${String(chunkIdCount).padStart(3, '0')}`,
+                        content: chunkContent.trim(),
+                        pages: Array.from(currentPagesSet),
+                        embedding: null
+                    });
+                    chunkIdCount++;
+                    accumulatedText = accumulatedText.substring(chunkSize - overlap);
+                }
+            }
+
+            if (accumulatedText.trim().length > 0) {
+                chunks.push({
+                    id: `CHUNK_${String(chunkIdCount).padStart(3, '0')}`,
+                    content: accumulatedText.trim(),
+                    pages: Array.from(currentPagesSet),
+                    embedding: null
+                });
+            }
+
+            documentChunks = chunks;
+
+            // Generate Embeddings
+            const apiKey = document.getElementById('apiKey').value.trim();
+            if (apiKey) {
+                showLoader("Generating Embeddings", "Constructing dense coordinates via text-embedding-004...");
+                try {
+                    await generateBatchEmbeddings(chunks, apiKey);
+                } catch (e) {
+                    console.error(e);
+                    showToast("API Embedding rejected. Injecting high-fidelity simulative coordinates.", true);
+                    generateMockEmbeddings(chunks);
+                }
+            } else {
+                showToast("Key missing. Harnessing interactive local simulated embeddings.", false);
+                generateMockEmbeddings(chunks);
+            }
+
+            // Sync Stats Indicators
+            document.getElementById('statTitle').innerText = title;
+            document.getElementById('statTitle').title = title;
+            document.getElementById('statPages').innerText = currentPdfPages;
+            document.getElementById('statChunks').innerText = chunks.length;
+            
+            let totalChars = 0;
+            textByPage.forEach(p => totalChars += p.text.length);
+            document.getElementById('statChars').innerText = totalChars.toLocaleString();
+
+            document.getElementById('activeDocName').innerText = title;
+            document.getElementById('activeDocPreview').classList.remove('hidden');
+            document.getElementById('rebuildBtn').removeAttribute('disabled');
+
+            // Render Inspector lists and Interactive Galaxy Map
+            renderVectorInspector();
+            initVectorUniverse();
+            hideLoader();
+        }
+
+        // Dynamic simulated high-dimensional embeddings (Vector Map Visualizer positioning)
+        function generateMockEmbeddings(chunks) {
+            chunks.forEach((chunk, index) => {
+                // Word extraction
+                const words = chunk.content.toLowerCase().match(/\b\w{3,15}\b/g) || [];
+                const freq = {};
+                words.forEach(w => freq[w] = (freq[w] || 0) + 1);
+                chunk.localFreq = freq;
+
+                // Create deterministic vector mapped space
+                const vector = new Array(1536).fill(0).map((_, i) => {
+                    let sum = 0;
+                    for (const word in freq) {
+                        const hash = word.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
+                        if (hash % 1536 === i) sum += freq[word] * 2;
+                    }
+                    return sum + Math.random() * 0.1;
+                });
+                chunk.embedding = normalizeVector(vector);
+            });
+        }
+
+        function normalizeVector(v) {
+            const norm = Math.sqrt(v.reduce((sum, val) => sum + val * val, 0));
+            return norm === 0 ? v : v.map(val => val / norm);
+        }
+
+        // Embedding API Connector
+        async function generateBatchEmbeddings(chunks, apiKey) {
+            const batchSize = 15;
+            for (let i = 0; i < chunks.length; i += batchSize) {
+                const slice = chunks.slice(i, i + batchSize);
+                const embedRequests = slice.map(c => ({
+                    model: "models/text-embedding-004",
+                    content: { parts: [{ text: c.content }] }
+                }));
+
+                const payload = { requests: embedRequests };
+                const res = await callGeminiAPI("models/text-embedding-004:batchEmbedContents", payload, apiKey);
+                
+                if (res.embeddings && res.embeddings.length > 0) {
+                    res.embeddings.forEach((emb, index) => {
+                        chunks[i + index].embedding = emb.values;
+                    });
+                }
+            }
+        }
+
+        async function rebuildIndex() {
+            if (documentChunks.length === 0) return;
+            showLoader("Re-assembling Index", "Updating overlapping parameters and clear DB memory...");
+            
+            let pageTexts = {};
+            documentChunks.forEach(c => {
+                c.pages.forEach(pNum => {
+                    if (!pageTexts[pNum]) pageTexts[pNum] = "";
+                    if (c.content.includes(`[Page ${pNum}]`)) {
+                        pageTexts[pNum] += c.content.split(`[Page ${pNum}]`)[1].substring(0, 450);
+                    } else {
+                        pageTexts[pNum] += c.content.substring(0, 350);
+                    }
+                });
+            });
+
+            let restructured = Object.keys(pageTexts).map(pKey => ({
+                page: parseInt(pKey),
+                text: pageTexts[pKey]
+            }));
+
+            await buildVectorIndex(restructured, currentPdfFilename);
+        }
+
+        // Similarity retrieval mapping
+        function cosineSimilarity(vectorA, vectorB) {
+            let dotProduct = 0;
+            let normA = 0;
+            let normB = 0;
+            for (let i = 0; i < vectorA.length; i++) {
+                dotProduct += vectorA[i] * vectorB[i];
+                normA += vectorA[i] * vectorA[i];
+                normB += vectorB[i] * vectorB[i];
+            }
+            return normA === 0 || normB === 0 ? 0 : dotProduct / (Math.sqrt(normA) * Math.sqrt(normB));
+        }
+
+        async function performVectorSearch(query, topK) {
+            const apiKey = document.getElementById('apiKey').value.trim();
+            let queryVector = null;
+
+            if (apiKey) {
+                try {
+                    const payload = {
+                        model: "models/text-embedding-004",
+                        content: { parts: [{ text: query }] }
+                    };
+                    const res = await callGeminiAPI("models/text-embedding-004:embedContent", payload, apiKey);
+                    queryVector = res.embedding.values;
+                } catch (e) {
+                    console.error(e);
+                    queryVector = generateLocalQueryVector(query);
+                }
+            } else {
+                queryVector = generateLocalQueryVector(query);
+            }
+
+            const scoredChunks = documentChunks.map(chunk => {
+                const score = cosineSimilarity(queryVector, chunk.embedding);
+                return { score, chunk };
+            });
+
+            scoredChunks.sort((a, b) => b.score - a.score);
+            const results = scoredChunks.slice(0, topK).map(item => ({
+                ...item.chunk,
+                similarity: item.score
+            }));
+
+            // Light up matching elements inside Universe Visualizer Canvas
+            pulseQueryStars(results);
+
+            return results;
+        }
+
+        function generateLocalQueryVector(query) {
+            const words = query.toLowerCase().match(/\b\w{3,15}\b/g) || [];
+            const freq = {};
+            words.forEach(w => freq[w] = (freq[w] || 0) + 1);
+
+            const vector = new Array(1536).fill(0).map((_, i) => {
+                let sum = 0;
+                for (const word in freq) {
+                    const hash = word.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
+                    if (hash % 1536 === i) sum += freq[word] * 5;
+                }
+                return sum + Math.random() * 0.05;
+            });
+            return normalizeVector(vector);
+        }
+
+        // THE VECTOR GALAXY VISUALIZER (Unique Interactive Node-Universe)
+        function initVectorUniverse() {
+            universeCanvas = document.getElementById('vectorUniverseCanvas');
+            if (!universeCanvas) return;
+            universeCtx = universeCanvas.getContext('2d');
+
+            // Match sizing
+            universeCanvas.width = universeCanvas.parentElement.clientWidth;
+            universeCanvas.height = universeCanvas.parentElement.clientHeight;
+
+            // Generate spatial points for each chunk in 2D galaxy space
+            universeStars = [];
+            if (documentChunks.length === 0) {
+                universeCtx.clearRect(0, 0, universeCanvas.width, universeCanvas.height);
+                return;
+            }
+
+            const padding = 40;
+            documentChunks.forEach((c, idx) => {
+                // Assign orbital initial parameters
+                const angleOffset = (idx / documentChunks.length) * Math.PI * 2;
+                const distance = 40 + (idx * 15) % (Math.min(universeCanvas.width, universeCanvas.height) / 2 - padding);
+                
+                universeStars.push({
+                    chunk: c,
+                    angleOffset: angleOffset,
+                    distance: distance,
+                    size: 6,
+                    color: '#6366f1',
+                    pulseScale: 1,
+                    isSearching: false
+                });
+            });
+
+            // Start orbital rotation canvas physics loop
+            if (universeAnimFrameId) cancelAnimationFrame(universeAnimFrameId);
+            animateVectorUniverse();
+
+            // Set interactive click event handlers
+            universeCanvas.onclick = handleUniverseCanvasClick;
+        }
+
+        function animateVectorUniverse() {
+            if (activeTab !== 'index') return;
+            universeAngle += 0.0035; // Gentle rotational momentum rate
+            drawVectorUniverse();
+            universeAnimFrameId = requestAnimationFrame(animateVectorUniverse);
+        }
+
+        function drawVectorUniverse() {
+            if (!universeCanvas || activeTab !== 'index') return;
+            universeCtx.clearRect(0, 0, universeCanvas.width, universeCanvas.height);
+
+            const centerX = universeCanvas.width / 2;
+            const centerY = universeCanvas.height / 2;
+
+            // Compute current rotating positions of stellar nodes
+            universeStars.forEach(star => {
+                const currentAngle = star.angleOffset + universeAngle;
+                star.x = centerX + Math.cos(currentAngle) * star.distance;
+                star.y = centerY + Math.sin(currentAngle) * star.distance;
+            });
+
+            // Connect lines between consecutive overlap elements
+            universeCtx.beginPath();
+            for (let i = 0; i < universeStars.length - 1; i++) {
+                universeCtx.moveTo(universeStars[i].x, universeStars[i].y);
+                universeCtx.lineTo(universeStars[i + 1].x, universeStars[i + 1].y);
+            }
+            universeCtx.strokeStyle = 'rgba(99, 102, 241, 0.05)';
+            universeCtx.stroke();
+
+            // Draw individual stars
+            universeStars.forEach(star => {
+                universeCtx.beginPath();
+                const radius = star.size * (star.isSearching ? 2.5 : 1);
+                universeCtx.arc(star.x, star.y, radius, 0, Math.PI * 2);
+                
+                // Add soft stellar bloom effect
+                const grad = universeCtx.createRadialGradient(star.x, star.y, 0, star.x, star.y, radius * 2.5);
+                grad.addColorStop(0, star.color);
+                grad.addColorStop(0.3, star.color);
+                grad.addColorStop(1, 'transparent');
+
+                universeCtx.fillStyle = grad;
+                universeCtx.fill();
+
+                // Draw solid center core
+                universeCtx.beginPath();
+                universeCtx.arc(star.x, star.y, radius * 0.4, 0, Math.PI * 2);
+                universeCtx.fillStyle = '#ffffff';
+                universeCtx.fill();
+
+                // Draw labels if searched or active
+                if (star.isSearching || star === activeSelectedStar) {
+                    universeCtx.font = 'bold 9px monospace';
+                    universeCtx.fillStyle = star.isSearching ? '#34d399' : '#a5b4fc';
+                    universeCtx.fillText(star.chunk.id, star.x + 12, star.y - 4);
+                }
+            });
+        }
+
+        function pulseQueryStars(topResults) {
+            if (universeStars.length === 0) return;
+            
+            // Clear prior highlights
+            universeStars.forEach(s => {
+                s.isSearching = false;
+                s.color = '#6366f1';
+            });
+
+            // Map and light up target stars
+            topResults.forEach(r => {
+                const matchStar = universeStars.find(s => s.chunk.id === r.id);
+                if (matchStar) {
+                    matchStar.isSearching = true;
+                    matchStar.color = '#10b981'; // Green glow for matching nodes
+                }
+            });
+        }
+
+        function handleUniverseCanvasClick(e) {
+            const rect = universeCanvas.getBoundingClientRect();
+            const clickX = e.clientX - rect.left;
+            const clickY = e.clientY - rect.top;
+
+            // Detect star hits
+            let hitStar = null;
+            universeStars.forEach(s => {
+                if (Math.hypot(s.x - clickX, s.y - clickY) < 15) {
+                    hitStar = s;
+                }
+            });
+
+            if (hitStar) {
+                activeSelectedStar = hitStar;
+                showChunkInspectModal(hitStar.chunk);
+            }
+        }
+
+        // RUN QUERY INSTRUCTIONS
+        async function submitQuery() {
+            const queryInput = document.getElementById('queryInput');
+            const query = queryInput.value.trim();
+            if (!query) return;
+
+            if (documentChunks.length === 0) {
+                showToast("Please index a document first.", true);
+                return;
+            }
+
+            const apiKey = document.getElementById('apiKey').value.trim();
+            if (!apiKey) {
+                showToast("API key is required to activate localized grounding models.", true);
+                return;
+            }
+
+            appendChatMessage("User", query, "fa-user bg-slate-800 text-slate-300");
+            queryInput.value = "";
+            document.getElementById('typingIndicator').classList.remove('hidden');
+
+            try {
+                const topK = parseInt(document.getElementById('topKInput').value);
+                const retrieved = await performVectorSearch(query, topK);
+
+                let formattedContext = "";
+                retrieved.forEach(chunk => {
+                    formattedContext += `--- START OF CHUNK ${chunk.id} (Pages: ${chunk.pages.join(', ')}) ---\n`;
+                    formattedContext += `${chunk.content}\n`;
+                    formattedContext += `--- END OF CHUNK ${chunk.id} ---\n\n`;
+                });
+
+                const systemInstruction = 
+                    "You are ReSearch AI, an expert research assistant that answers queries ONLY using the provided document context.\n" +
+                    "Rules:\n" +
+                    "1. Answer the question using ONLY the provided document context chunks.\n" +
+                    "2. Do not invent facts, extrapolate, or bring outside training knowledge.\n" +
+                    "3. You MUST explicitly reference the chunk IDs (e.g., [CHUNK_003]) you used to derive your facts. Write the cited chunk IDs inside square brackets next to the facts you present.\n" +
+                    "4. If the provided context does not contain sufficient information to confidently answer the query, say: " +
+                    "'I am sorry, but the provided document context does not contain enough information to answer this question.' Do not attempt to guess.\n";
+
+                const finalPrompt = {
+                    contents: [{
+                        parts: [{
+                            text: `${systemInstruction}\n\nRETIREVED DOCUMENT CHUNKS:\n${formattedContext}\n\nUSER QUESTION:\n${query}\n\nCONCISE, CRITICAL RESPONSE:`
+                        }]
+                    }]
+                };
+
+                const res = await callGeminiAPI("generateContent", finalPrompt, apiKey);
+                const ansText = res.candidates?.[0]?.content?.parts?.[0]?.text || "No response generated.";
+                
+                appendChatMessageStream("ReSearch AI", ansText, "fa-robot bg-indigo-500/10 text-indigo-400");
+                renderSourceShelf(retrieved);
+
+            } catch (err) {
+                console.error(err);
+                appendChatMessage("System Error", `Execution failed: ${err.message}`, "fa-triangle-exclamation bg-rose-500/10 text-rose-400");
+            } finally {
+                document.getElementById('typingIndicator').classList.add('hidden');
+            }
+        }
+
+        function handleQueryKeypress(event) {
+            if (event.key === 'Enter') submitQuery();
+        }
+
+        // Adaptive summarization depth modes
+        async function generateAdaptiveSummary() {
+            if (documentChunks.length === 0) {
+                showToast("Please index a document first.", true);
+                return;
+            }
+
+            const apiKey = document.getElementById('apiKey').value.trim();
+            if (!apiKey) {
+                showToast("Please provide your API key.", true);
+                return;
+            }
+
+            showLoader("Synthesizing Summary", `Deploying linguistic adaptation parameters for ${selectedSummaryDepth} level...`);
+            const outBox = document.getElementById('summaryOutput');
+            outBox.innerHTML = `<div class="w-full h-12 rounded-lg shimmer-loading mb-3"></div><div class="w-3/4 h-8 rounded-lg shimmer-loading"></div>`;
+
+            try {
+                const totalChunks = documentChunks.length;
+                const step = Math.max(1, Math.floor(totalChunks / 6));
+                let representative = [];
+                for (let i = 0; i < totalChunks && representative.length < 6; i += step) {
+                    representative.push(documentChunks[i]);
+                }
+
+                const contextStr = representative.map(c => `[${c.id}]: ${c.content.substring(0, 500)}...`).join("\n");
+
+                const depthPrompts = {
+                    "Beginner": "Explain the paper using clean, non-jargon intuitive terms. Replaces technical matrices with elegant structural analogies.",
+                    "Student": "Explain at an undergraduate level. Address methodology terms accurately, outlining benchmarks and optimization graphs.",
+                    "Expert": "Explain like a peer review examiner. Target edge-cases, proofs, evaluation discrepancies, and architectural flaws."
+                };
+
+                const prompt = {
+                    contents: [{
+                        parts: [{
+                            text: `You are ReSearch AI. Produce a comprehensive research paper summary.\n` +
+                                  `Depth Target: ${selectedSummaryDepth} - ${depthPrompts[selectedSummaryDepth]}\n\n` +
+                                  `DOCUMENT EXCERPTS:\n${contextStr}\n\n` +
+                                  `Respond with a well-structured summary containing:\n` +
+                                  `1. Executive Abstract\n2. Core Methodological Contributions\n3. Key Findings/Outcomes\n\nReturn clean markdown format.`
+                        }]
+                    }]
+                };
+
+                const res = await callGeminiAPI("generateContent", prompt, apiKey);
+                const outText = res.candidates?.[0]?.content?.parts?.[0]?.text || "Failed to generate summary.";
+                
+                // Stream Summary block
+                streamTextIntoElement(outBox, outText);
+            } catch (err) {
+                console.error(err);
+                showToast(err.message || "Failed calling summarizer model.", true);
+                outBox.innerText = "Error producing summary analysis.";
+            } finally {
+                hideLoader();
+            }
+        }
+
+        // Research boundaries extractor
+        async function runResearchGapAnalysis() {
+            if (documentChunks.length === 0) {
+                showToast("Please index a document first.", true);
+                return;
+            }
+
+            const apiKey = document.getElementById('apiKey').value.trim();
+            if (!apiKey) {
+                showToast("Gemini key required.", true);
+                return;
+            }
+
+            showLoader("Analyzing Gaps", "Scraping localized vectors to identify negative benchmarks...");
+            const outBox = document.getElementById('gapsOutput');
+            outBox.innerHTML = `<div class="w-full h-12 rounded-lg shimmer-loading mb-3"></div><div class="w-3/4 h-8 rounded-lg shimmer-loading"></div>`;
+
+            try {
+                const queries = ["limitations", "future work", "evaluation flaws", "unresolved challenges"];
+                let uniqueChunksMap = {};
+
+                for (const q of queries) {
+                    const hits = await performVectorSearch(q, 2);
+                    hits.forEach(c => uniqueChunksMap[c.id] = c);
+                }
+
+                const retrieved = Object.values(uniqueChunksMap);
+                const contextStr = retrieved.map(c => `[${c.id}]: ${c.content}`).join("\n\n");
+
+                const prompt = {
+                    contents: [{
+                        parts: [{
+                            text: `You are ReSearch AI. Based ONLY on the extracted chunks below, construct an analytical Research-Gap assessment.\n\n` +
+                                  `List:\n1. Documented Limitations (explicitly pointed out in the paper)\n` +
+                                  `2. Missing Evaluation Metrics or Experimental Controls (unstated gaps you detect in their setup)\n` +
+                                  `3. Promising Directions for Future Work Suggested by the Evidence\n\n` +
+                                  `DOCUMENT CONTEXT:\n${contextStr}\n\n` +
+                                  `Strictly cite chunk IDs (e.g. [CHUNK_001]) for every gap identified. If nothing is explicitly or implicitly found, state that the context lacks information about limitations.`
+                        }]
+                    }]
+                };
+
+                const res = await callGeminiAPI("generateContent", prompt, apiKey);
+                const outText = res.candidates?.[0]?.content?.parts?.[0]?.text || "Failed to analyze limits.";
+
+                streamTextIntoElement(outBox, outText);
+
+            } catch (err) {
+                console.error(err);
+                showToast(err.message || "Failed running paper analysis.", true);
+                outBox.innerText = "Error analyzing research gaps.";
+            } finally {
+                hideLoader();
+            }
+        }
+
+        // Ablation test runs
+        async function runAblationTest() {
+            const query = document.getElementById('ablationQueryInput').value.trim();
+            if (!query) return;
+
+            if (documentChunks.length === 0) {
+                showToast("Please index a document.", true);
+                return;
+            }
+
+            const apiKey = document.getElementById('apiKey').value.trim();
+            if (!apiKey) {
+                showToast("Gemini key is required.", true);
+                return;
+            }
+
+            showLoader("Ablation Run", "Triggering comparative parameters...");
+
+            const bOut = document.getElementById('ablationBaseOutput');
+            const rOut = document.getElementById('ablationRagOutput');
+
+            bOut.innerHTML = `<div class="w-full h-10 rounded-lg shimmer-loading mb-2"></div><div class="w-1/2 h-6 rounded-lg shimmer-loading"></div>`;
+            rOut.innerHTML = `<div class="w-full h-10 rounded-lg shimmer-loading mb-2"></div><div class="w-1/2 h-6 rounded-lg shimmer-loading"></div>`;
+
+            // Run base weights
+            const basePrompt = {
+                contents: [{
+                    parts: [{
+                        text: `Answer this specific academic paper question as best as you can. Since you do not have context, try to predict values if you recognize the paper, or say you cannot answer. Question: ${query}`
+                    }]
+                }]
+            };
+
+            const basePromise = callGeminiAPI("generateContent", basePrompt, apiKey)
+                .then(res => {
+                    const txt = res.candidates?.[0]?.content?.parts?.[0]?.text || "No response generated.";
+                    streamTextIntoElement(bOut, txt);
+                })
+                .catch(err => {
+                    bOut.innerText = `Error: ${err.message}`;
+                });
+
+            // Run RAG weights
+            const ragPromise = (async () => {
+                const hits = await performVectorSearch(query, 4);
+                let contextStr = "";
+                hits.forEach(c => {
+                    contextStr += `[${c.id}] (Page ${c.pages.join(',')}): ${c.content}\n\n`;
+                });
+
+                const ragPrompt = {
+                    contents: [{
+                        parts: [{
+                            text: `You are ReSearch AI. Answer this question STRICTLY from the retrieved contexts below. Cite references (e.g. [CHUNK_001]).\n\n` +
+                                  `CONTEXT:\n${contextStr}\n\n` +
+                                  `QUESTION: ${query}`
+                        }]
+                    }]
+                };
+
+                const res = await callGeminiAPI("generateContent", ragPrompt, apiKey);
+                const txt = res.candidates?.[0]?.content?.parts?.[0]?.text || "No response generated.";
+                streamTextIntoElement(rOut, txt);
+            })()
+            .catch(err => {
+                rOut.innerText = `Error: ${err.message}`;
+            });
+
+            await Promise.all([basePromise, ragPromise]);
+            hideLoader();
+        }
+
+        // Factuality critic
+        async function runFactualityCheck() {
+            const query = document.getElementById('evalQueryInput').value.trim();
+            if (!query) return;
+
+            if (documentChunks.length === 0) {
+                showToast("Please index a document.", true);
+                return;
+            }
+
+            const apiKey = document.getElementById('apiKey').value.trim();
+            if (!apiKey) {
+                showToast("API key required.", true);
+                return;
+            }
+
+            showLoader("Auditing RAG Pipeline", "Spinning up evaluator LLM to check grounding consistency...");
+            
+            // Set stats to loading N/A
+            document.getElementById('evalScoreGrounded').className = "text-3xl font-black text-slate-600 block my-1 animate-pulse";
+            document.getElementById('evalScoreHallucinated').className = "text-3xl font-black text-slate-600 block my-1 animate-pulse";
+            document.getElementById('evalScoreCitations').className = "text-3xl font-black text-slate-600 block my-1 animate-pulse";
+            document.getElementById('evalScoreGrounded').innerText = "CALC";
+            document.getElementById('evalScoreHallucinated').innerText = "CALC";
+            document.getElementById('evalScoreCitations').innerText = "CALC";
+
+            document.getElementById('evalReportOutput').innerHTML = `<div class="w-full h-8 rounded-lg shimmer-loading mb-2"></div><div class="w-5/6 h-6 rounded-lg shimmer-loading"></div>`;
+
+            try {
+                const hits = await performVectorSearch(query, 4);
+                let contextStr = "";
+                hits.forEach(c => {
+                    contextStr += `[${c.id}]: ${c.content}\n\n`;
+                });
+
+                const normalPrompt = {
+                    contents: [{
+                        parts: [{
+                            text: `Answer this question strictly using provided context. Cite source chunk IDs.\n\nCONTEXT:\n${contextStr}\n\nQUESTION:\n${query}`
+                        }]
+                    }]
+                };
+
+                const normalRes = await callGeminiAPI("generateContent", normalPrompt, apiKey);
+                const generatedAnswer = normalRes.candidates?.[0]?.content?.parts?.[0]?.text || "";
+
+                // Audit prompt
+                const evalPrompt = {
+                    contents: [{
+                        parts: [{
+                            text: `You are a rigorous third-party auditor evaluating the outputs of a RAG pipeline.\n` +
+                                  `Your objective is to judge the generated ANSWER against the reference raw DOCUMENT CONTEXT.\n\n` +
+                                  `Assign critical ratings for:\n` +
+                                  `1. GROUNDEDNESS (Is the entire answer directly verifiable in the context? Score: 1-5)\n` +
+                                  `2. HALLUCINATION (Are there facts introduced outside the context? Answer strictly 'Yes' or 'No')\n` +
+                                  `3. CITED ACCURACY (Are the chunk IDs accurately mapped to the facts? Score: 1-5)\n\n` +
+                                  `EVALUATION SPECIFICATION:\n` +
+                                  `* QUESTION: ${query}\n` +
+                                  `* ANSWER GENERATED: ${generatedAnswer}\n` +
+                                  `* DOCUMENT CONTEXT: ${contextStr}\n\n` +
+                                  `Provide your final response structured as a JSON object inside valid brackets { } containing fields:\n` +
+                                  `{\n` +
+                                  `  "groundedness": number, // 1 to 5\n` +
+                                  `  "hallucinated": "Yes" | "No",\n` +
+                                  `  "citationsAccuracy": number, // 1 to 5\n` +
+                                  `  "justification": "Detailed explanation of scores and audit observations"\n` +
+                                  `}`
+                        }]
+                    }],
+                    generationConfig: {
+                        responseMimeType: "application/json"
+                    }
+                };
+
+                const evalRes = await callGeminiAPI("generateContent", evalPrompt, apiKey);
+                const scores = JSON.parse(evalRes.candidates?.[0]?.content?.parts?.[0]?.text);
+
+                // Draw values
+                const gScore = document.getElementById('evalScoreGrounded');
+                gScore.innerText = `${scores.groundedness}/5`;
+                gScore.className = scores.groundedness >= 4 ? "text-3xl font-black text-emerald-400 block my-1 text-glow animate-bounce" : "text-3xl font-black text-rose-500 block my-1 text-glow";
+
+                const hScore = document.getElementById('evalScoreHallucinated');
+                hScore.innerText = scores.hallucinated;
+                hScore.className = scores.hallucinated === "No" ? "text-3xl font-black text-emerald-400 block my-1 text-glow animate-bounce" : "text-3xl font-black text-rose-500 block my-1 text-glow";
+
+                const cScore = document.getElementById('evalScoreCitations');
+                cScore.innerText = `${scores.citationsAccuracy}/5`;
+                cScore.className = scores.citationsAccuracy >= 4 ? "text-3xl font-black text-emerald-400 block my-1 text-glow animate-bounce" : "text-3xl font-black text-rose-500 block my-1 text-glow";
+
+                const reportDiv = document.getElementById('evalReportOutput');
+                reportDiv.innerHTML = "";
+                const auditContentHTML = `
+                    <div class="space-y-4">
+                        <div class="bg-indigo-500/5 border border-indigo-500/15 p-4 rounded-xl">
+                            <h5 class="font-bold text-xs text-indigo-300 uppercase tracking-wide mb-1">Auditor Comments</h5>
+                            <p class="text-xs text-slate-300 leading-relaxed" id="auditorTextTarget"></p>
+                        </div>
+                        <div>
+                            <h5 class="font-bold text-xs text-slate-500 uppercase tracking-wider mb-2">Evaluated Response</h5>
+                            <div class="p-4 bg-slate-900 border border-slate-850 rounded-xl text-xs text-slate-400 whitespace-pre-wrap leading-relaxed">${generatedAnswer}</div>
+                        </div>
+                    </div>
+                `;
+                reportDiv.innerHTML = auditContentHTML;
+                
+                // Stream auditor feedback text
+                streamTextIntoElement(document.getElementById('auditorTextTarget'), scores.justification);
+
+            } catch (err) {
+                console.error(err);
+                document.getElementById('evalReportOutput').innerText = `Verification Error: ${err.message}`;
+            } finally {
+                hideLoader();
+            }
+        }
+
+        // Inspector list populator
+        function renderVectorInspector() {
+            const grid = document.getElementById('inspectorGrid');
+            grid.innerHTML = "";
+
+            if (documentChunks.length === 0) {
+                grid.innerHTML = `
+                    <div class="col-span-full text-center py-12 text-slate-500 text-sm">
+                        <i class="fa-solid fa-box-open text-4xl mb-2 block text-slate-700"></i>
+                        No chunks currently indexed.
+                    </div>
+                `;
+                return;
+            }
+
+            documentChunks.forEach((chunk, index) => {
+                const card = document.createElement('div');
+                card.className = "inspector-chunk-card bg-slate-900 border border-slate-850 hover:border-indigo-500/30 p-4 rounded-xl transition-all duration-300 cursor-pointer flex flex-col justify-between hover:shadow-lg hover:-translate-y-1 opacity-0";
+                card.style.animation = `slideUpIn 0.35s cubic-bezier(0.16, 1, 0.3, 1) ${index * 0.02}s forwards`;
+                card.dataset.content = chunk.content.toLowerCase();
+                card.onclick = () => showChunkInspectModal(chunk);
+
+                card.innerHTML = `
+                    <div>
+                        <div class="flex justify-between items-center mb-2">
+                            <span class="text-xs font-bold text-white">${chunk.id}</span>
+                            <span class="text-[9px] bg-slate-800 text-indigo-300 font-bold px-1.5 py-0.5 rounded">Pages ${chunk.pages.join(', ')}</span>
+                        </div>
+                        <p class="text-xs text-slate-400 line-clamp-3 leading-relaxed mb-3">${chunk.content}</p>
+                    </div>
+                    <div class="flex justify-between items-center border-t border-slate-850 pt-2 text-[10px] text-slate-500 font-semibold">
+                        <span>Size: ${chunk.embedding ? chunk.embedding.length : 0} elements</span>
+                        <span class="text-indigo-400 flex items-center gap-1">Inspect <i class="fa-solid fa-arrow-up-right-from-square"></i></span>
+                    </div>
+                `;
+                grid.appendChild(card);
+            });
+        }
+
+        function filterVectorInspector() {
+            const query = document.getElementById('inspectorSearch').value.toLowerCase().trim();
+            const cards = document.querySelectorAll('.inspector-chunk-card');
+            
+            cards.forEach(card => {
+                if (card.dataset.content.includes(query)) {
+                    card.classList.remove('hidden');
+                } else {
+                    card.classList.add('hidden');
+                }
+            });
+        }
+
+        // Metadata detail popup modal
+        function showChunkInspectModal(chunk) {
+            const modal = document.createElement('div');
+            modal.className = "fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-[250] flex items-center justify-center p-4 transition-all duration-300 opacity-0 scale-95";
+            modal.onclick = (e) => { if (e.target === modal) {
+                modal.classList.add('opacity-0', 'scale-95');
+                setTimeout(() => modal.remove(), 200);
+            }};
+
+            const hasEmbedding = chunk.embedding && chunk.embedding.length > 0;
+            const previewEmbed = hasEmbedding ? `[${chunk.embedding.slice(0, 5).map(v => v.toFixed(4)).join(', ')} ...]` : "Offline simulated metrics active";
+
+            modal.innerHTML = `
+                <div class="bg-slate-900 border border-slate-800 rounded-3xl max-w-2xl w-full p-6 shadow-2xl flex flex-col max-h-[85vh] transform transition-transform duration-300 scale-100">
+                    <div class="flex justify-between items-start border-b border-slate-800 pb-3 mb-4">
+                        <div>
+                            <h3 class="font-extrabold text-white flex items-center gap-2">
+                                <span class="bg-indigo-500/10 text-indigo-300 text-xs font-bold px-2.5 py-1 rounded-lg">${chunk.id}</span>
+                                Chunk Index Values
+                            </h3>
+                            <p class="text-[10px] text-slate-500 mt-0.5">Assigned Target Page: Pages ${chunk.pages.join(', ')}</p>
+                        </div>
+                        <button onclick="this.closest('.fixed').classList.add('opacity-0'); setTimeout(() => this.closest('.fixed').remove(), 200)" class="text-slate-500 hover:text-white transition-colors"><i class="fa-solid fa-xmark text-lg"></i></button>
+                    </div>
+
+                    <div class="flex-1 overflow-y-auto space-y-4 pr-1">
+                        <div>
+                            <h4 class="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1.5">Parsed Context Text</h4>
+                            <div class="bg-slate-950 border border-slate-850 rounded-2xl p-4 text-xs text-slate-300 leading-relaxed whitespace-pre-wrap code-font">${chunk.content}</div>
+                        </div>
+
+                        <div>
+                            <h4 class="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1.5">1536-Dimensional Coordinate Preview</h4>
+                            <div class="bg-slate-950 text-indigo-400 rounded-2xl p-3 text-[10px] code-font break-all border border-indigo-500/10">
+                                ${previewEmbed}
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="border-t border-slate-800 pt-3 mt-4 flex justify-end">
+                        <button onclick="this.closest('.fixed').classList.add('opacity-0'); setTimeout(() => this.closest('.fixed').remove(), 200)" class="bg-slate-800 hover:bg-slate-700 text-white text-xs font-bold px-4 py-2 rounded-lg transition-colors">
+                            Close Window
+                        </button>
+                    </div>
+                </div>
+            `;
+            document.body.appendChild(modal);
+            // Trigger animation
+            setTimeout(() => {
+                modal.classList.remove('opacity-0', 'scale-95');
+                modal.classList.add('opacity-100', 'scale-100');
+            }, 50);
+        }
+
+        // Quick visual chat list additions
+        function renderSourceShelf(retrieved) {
+            const shelf = document.getElementById('sourcesShelf');
+            const grid = document.getElementById('retrievedSourcesGrid');
+            grid.innerHTML = "";
+
+            retrieved.forEach((chunk, index) => {
+                const card = document.createElement('div');
+                card.id = `sourceCard-${chunk.id}`;
+                card.className = "bg-slate-900 border border-slate-850 hover:border-indigo-500/30 p-3 rounded-xl transition-all duration-300 shadow-md cursor-pointer flex flex-col justify-between h-40 opacity-0 transform translate-y-4";
+                card.style.animation = `slideUpIn 0.35s cubic-bezier(0.16, 1, 0.3, 1) ${index * 0.05}s forwards`;
+                card.onclick = () => { showChunkInspectModal(chunk); };
+
+                card.innerHTML = `
+                    <div>
+                        <div class="flex justify-between items-center mb-1.5">
+                            <span class="text-xs font-bold text-indigo-300">${chunk.id}</span>
+                            <span class="text-[9px] text-slate-500 bg-slate-850 px-1.5 py-0.5 rounded font-semibold">Page ${chunk.pages.join(', ')}</span>
+                        </div>
+                        <p class="text-[11px] text-slate-400 line-clamp-4 leading-relaxed">${chunk.content}</p>
+                    </div>
+                    <div class="flex justify-between items-center border-t border-slate-850 pt-2 mt-2">
+                        <span class="text-[8px] text-slate-500 font-bold uppercase">Similarity Index</span>
+                        <span class="text-xs font-bold text-emerald-400">${(chunk.similarity * 100).toFixed(1)}%</span>
+                    </div>
+                `;
+                grid.appendChild(card);
+            });
+
+            shelf.classList.remove('hidden');
+        }
+
+        function selectSummaryDepth(depth) {
+            selectedSummaryDepth = depth;
+            document.querySelectorAll('.summary-depth-btn').forEach(btn => {
+                btn.className = "summary-depth-btn text-xs font-semibold px-4 py-2 rounded-lg transition-all duration-300 text-slate-400 hover:text-white";
+            });
+
+            const activeBtn = document.getElementById(`depthBtn-${depth}`);
+            activeBtn.className = "summary-depth-btn text-xs font-semibold px-4 py-2 rounded-lg transition-all duration-300 bg-indigo-600 text-white shadow-md";
+
+            const descText = document.getElementById('depthDescText');
+            const depthDescMap = {
+                "Beginner": "Explain the paper using clean, non-jargon intuitive terms. Replaces technical matrices with elegant structural analogies.",
+                "Student": "Explain at an undergraduate level. Address methodology terms accurately, outlining benchmarks and optimization graphs.",
+                "Expert": "Explain like a peer review examiner. Target edge-cases, proofs, evaluation discrepancies, and architectural flaws."
+            };
+            descText.innerText = depthDescMap[depth];
+        }
+
+        // Animated typewriter helpers
+        function streamTextIntoElement(element, fullText) {
+            element.innerText = "";
+            let idx = 0;
+            const interval = setInterval(() => {
+                if (idx < fullText.length) {
+                    element.innerHTML += fullText.charAt(idx);
+                    idx++;
+                    // Auto-scroll inside panels
+                    const pane = element.closest('.tab-pane');
+                    if (pane) pane.scrollTop = pane.scrollHeight;
+                } else {
+                    clearInterval(interval);
+                }
+            }, 3);
+        }
+
+        function appendChatMessage(sender, text, iconStyle) {
+            const container = document.getElementById('chatHistory');
+            const wrapper = document.createElement('div');
+            wrapper.className = "flex items-start gap-3 message-enter-anim";
+
+            let formattedText = text.replace(/\[(CHUNK_\d+)\]/g, '<span onclick="highlightSourceCard(\'$1\')" class="bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-300 font-bold px-1.5 py-0.5 rounded text-[10px] cursor-pointer transition-colors">$1</span>');
+
+            wrapper.innerHTML = `
+                <div class="w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${iconStyle}">
+                    <i class="fa-solid ${sender === 'User' ? 'fa-user' : 'fa-robot'} text-sm"></i>
+                </div>
+                <div class="bg-slate-900 border border-slate-800 text-slate-300 p-4 rounded-r-2xl rounded-bl-2xl max-w-[85%] text-sm leading-relaxed shadow-sm">
+                    <p class="font-bold text-[10px] text-slate-500 uppercase tracking-wider mb-1">${sender}</p>
+                    <div class="whitespace-pre-wrap">${formattedText}</div>
+                </div>
+            `;
+            container.appendChild(wrapper);
+            container.scrollTop = container.scrollHeight;
+        }
+
+        function appendChatMessageStream(sender, text, iconStyle) {
+            const container = document.getElementById('chatHistory');
+            const wrapper = document.createElement('div');
+            wrapper.className = "flex items-start gap-3 message-enter-anim";
+
+            wrapper.innerHTML = `
+                <div class="w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${iconStyle}">
+                    <i class="fa-solid fa-robot text-sm"></i>
+                </div>
+                <div class="bg-slate-900 border border-slate-800 text-slate-300 p-4 rounded-r-2xl rounded-bl-2xl max-w-[85%] text-sm leading-relaxed shadow-sm">
+                    <p class="font-bold text-[10px] text-indigo-400 uppercase tracking-wider mb-1">${sender}</p>
+                    <div class="whitespace-pre-wrap" id="liveStreamTextTarget"></div>
+                </div>
+            `;
+            container.appendChild(wrapper);
+            container.scrollTop = container.scrollHeight;
+
+            const streamTarget = document.getElementById('liveStreamTextTarget');
+            let idx = 0;
+            const timer = setInterval(() => {
+                if (idx < text.length) {
+                    // Extract safe chunk strings on fly for formatting
+                    streamTarget.innerHTML += text.charAt(idx);
+                    idx++;
+                    container.scrollTop = container.scrollHeight;
+                } else {
+                    clearInterval(timer);
+                    // Post-process string to convert static cite strings into live interactive highlighting nodes
+                    streamTarget.innerHTML = streamTarget.innerHTML.replace(/\[(CHUNK_\d+)\]/g, '<span onclick="highlightSourceCard(\'$1\')" class="bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-300 font-bold px-1.5 py-0.5 rounded text-[10px] cursor-pointer transition-all">$1</span>');
+                    // Strip target index to avoid subsequent typing collision
+                    streamTarget.removeAttribute('id');
+                }
+            }, 4);
+        }
+
+        // Core API network utility
+        async function callGeminiAPI(apiMethod, payload, apiKey, modelOverride = "") {
+            const maxRetries = 5;
+            let currentDelay = 1000;
+            
+            let url = "";
+            if (apiMethod.includes("text-embedding")) {
+                url = `https://generativelanguage.googleapis.com/v1beta/${apiMethod}?key=${apiKey}`;
+            } else {
+                const chosenModel = modelOverride || "gemini-2.5-flash";
+                url = `https://generativelanguage.googleapis.com/v1beta/models/${chosenModel}:${apiMethod}?key=${apiKey}`;
+            }
+
+            for (let i = 0; i < maxRetries; i++) {
+                try {
+                    const response = await fetch(url, {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify(payload)
+                    });
+
+                    if (!response.ok) {
+                        const errData = await response.json();
+                        throw new Error(errData.error?.message || `HTTP Code: ${response.status}`);
+                    }
+
+                    return await response.json();
+                } catch (error) {
+                    if (i === maxRetries - 1) throw error;
+                    await new Promise(resolve => setTimeout(resolve, currentDelay));
+                    currentDelay *= 2;
+                }
+            }
+        }
+
+        function highlightSourceCard(chunkId) {
+            const card = document.getElementById(`sourceCard-${chunkId}`);
+            if (card) {
+                card.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                card.classList.add('ring-2', 'ring-indigo-500', 'scale-105');
+                setTimeout(() => {
+                    card.classList.remove('ring-2', 'ring-indigo-500', 'scale-105');
+                }, 3000);
+            } else {
+                showToast(`Chunk reference ${chunkId} resides in memory database logs. Open Vector Map to inspect coordinate elements.`, false);
+            }
+        }
+
+        // Preloaded sample database definitions
+        const SAMPLE_PAPER = {
+            title: "Gemini 1.5: Unlocking Large-Scale Multimodal Long-Context Capabilities",
+            pages: 5,
+            rawPagesText: [
+                { page: 1, text: "Gemini 1.5 Pro is a highly advanced multimodal model designed for complex long-context reasoning. Built on a Mixture-of-Experts (MoE) architecture, Gemini 1.5 Pro expands context window options up to 1 million and up to 2 million tokens in private previews. Our primary objective in this paper is to demonstrate capabilities in context-rich tasks such as large code base debugging, cross-referencing over hours of video footage, and processing entire digital books in one query." },
+                { page: 2, text: "Architecture and Training Specifications: Gemini 1.5 Pro leverages sparse Mixture-of-Experts (MoE) to compute active routing over diverse parameter weights. During optimization, we utilize AdamW optimizer with a peak step size (learning rate) of 2e-4, incorporating a linear warmup phase of 5000 steps. The primary validation benchmark consists of the Needle In A Haystack (NIAH) test, assessing exact key-value lookup across high token densities. Training split sets consisted of 85% public dataset crawling, 10% curated books, and 5% scientific code-repositories." },
+                { page: 3, text: "Experimental Benchmarks and Outcomes: On the 1 million token NIAH assessment, Gemini 1.5 Pro achieves 99.7% retrieval accuracy across all modalities (Text, Audio, Video). In code comprehension tests, loading the entire three.js repository (~100,000 lines of code) enables the model to locate functional errors instantly. We also validate context recall on translating rare languages like Kalamang, where the model successfully parses complete grammar handbooks and vocabulary sheets on-the-fly to match human translators." },
+                { page: 4, text: "System Tradeoffs and Technical Limitations: Although Gemini 1.5 Pro demonstrates strong long-context recall, several explicit structural limits exist. Computational inference latency scales non-linearly with massive prompt token sizes, making interactive chat responses slower on multi-million token documents. Additionally, we identified evaluation flaws in our initial audio benchmarks, where noisy files caused significant degradation in word error rate (WER). Experimental controls lacked validation for highly overlapping speaker streams." },
+                { page: 5, text: "Future Directions and Unresolved Challenges: Our immediate roadmaps focus on reducing inference latency through model distillation and kv-cache optimization strategies. Open issues include supporting multi-speaker audio alignment under noisy channels and verifying semantic consistency in dynamic code execution loops. We suggest future work investigate hybrid architectures combining dense state-space representations (such as Mamba structures) with MoE routing matrices." }
+            ]
+        };
+    </script>
+</body>
+</html>
